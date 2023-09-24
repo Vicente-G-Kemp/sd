@@ -76,7 +76,17 @@ class CacheClient:
         time_saved = time_without_cache - time_with_cache
         print(f"\nTime saved thanks to cache: {time_saved:.2f} seconds")
         print(f"Number of times JSON lookup was avoided: {avoided_json_lookups}")
-        
+    
+    def removal(self, key):
+        value = find_car_by_id(int(key))
+        value = str(value)
+        if value:
+            print("Key found in JSON. Removing from cache...")
+            
+            # Agregando la llave-valor al caché
+            # self.stub.Put(cache_service_pb2.CacheItem(key=key, value=value))
+            self.stub.Remove(cache_service_pb2.CacheItem(key=key, value=value))
+            
 
 if __name__ == '__main__':
 
@@ -101,5 +111,8 @@ if __name__ == '__main__':
         elif choice == "3":
             print("Goodbye!")
             break
+        elif choice == "4":
+            key = input("Enter key: ")
+            value = client.removal(key)
         else:
             print("Invalid choice. Try again.")

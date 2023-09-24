@@ -31,7 +31,7 @@ services:
     restart: always
     depends_on: 
       - master
-  
+     
   search:
     build:
       context: ./app/search
@@ -48,6 +48,6 @@ services:
     restart: always
     depends_on: 
       - master
-
+    
 networks:
   cache_network:
