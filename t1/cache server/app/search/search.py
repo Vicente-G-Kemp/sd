@@ -1,6 +1,7 @@
 import grpc
 import json
 import time
+import random
 import numpy as np
 import cache_service_pb2
 import cache_service_pb2_grpc
@@ -11,12 +12,12 @@ class CacheClient:
         self.channel = grpc.insecure_channel(f"{host}:{port}")
         self.stub = cache_service_pb2_grpc.CacheServiceStub(self.channel)
 
-    def get(self, key, simulated=False):
+    def get(self, key, en_cache, simulated=False):
         start_time = time.time()  # Inicio del temporizador
 
         response = self.stub.Get(cache_service_pb2.Key(key=key))
         
-        if response.value:
+        if response.value and en_cache:
             elapsed_time = time.time() - start_time  # Calcula el tiempo transcurrido
             print(f"Time taken (cache): {elapsed_time:.5f} seconds")
             return response.value
@@ -31,7 +32,7 @@ class CacheClient:
             # Si no está en el caché, buscar en el JSON
             value = find_car_by_id(int(key))
             value = str(value)
-            if value:
+            if value and en_cache:
                 print("Key found in JSON. Adding to cache...")
                 
                 # Agregando la llave-valor al caché
@@ -50,9 +51,18 @@ class CacheClient:
                 print("Key not found.")
                 return None
             
-    def simulate_searches(self, n_searches=100):
-        keys_to_search = [f"{i}" for i in np.random.randint(1, 101, n_searches)]
-
+    def simulate_searches(self, n_searches, en_cache, sim_type):
+        if sim_type:
+            keys_to_search = [f"{i}" for i in np.random.randint(1, 101, n_searches)]
+        else:
+            #ids = list(range(100))
+            keys_to_search = list()
+            i=0
+            while i<n_searches:
+                hold_id = int(random.normalvariate(50,20))
+                hold_id = max(0, min(99, hold_id))
+                keys_to_search.append(hold_id)
+                i+=1
         # Métricas
         time_without_cache = 0
         time_with_cache = 0
@@ -66,7 +76,7 @@ class CacheClient:
             print(f"Searching : {count}/{n_searches}")
             start_time = time.time()
             time_without_cache += 3 + 0.001  # Estimado de tiempo de búsqueda en JSON
-            self.get(key)
+            self.get(key, en_cache)
             elapsed_time = time.time() - start_time
             time_with_cache += elapsed_time
 
@@ -82,9 +92,6 @@ class CacheClient:
         value = str(value)
         if value:
             print("Key found in JSON. Removing from cache...")
-            
-            # Agregando la llave-valor al caché
-            # self.stub.Put(cache_service_pb2.CacheItem(key=key, value=value))
             self.stub.Remove(cache_service_pb2.CacheItem(key=key, value=value))
             
 
@@ -96,23 +103,26 @@ if __name__ == '__main__':
         print("\nChoose an operation:")
         print("1. Get")
         print("2. Simulate Searches")
-        print("3. Exit")
+        print("3. Remove from cache [Testing only!!!]")
+        print("9. Exit")
 
         choice = input("Enter your choice: ")
 
         if choice == "1":
             key = input("Enter key: ")
-            value = client.get(key)
+            value = client.get(key, 1)
             if value is not None:
                 print(f"Value: {value}")
         elif choice == "2":
             n_searches = int(input("Enter the number of searches you want to simulate: "))
-            client.simulate_searches(n_searches)
+            en_cache = bool(int(input("Enable cache? 1 - yes, 0 - no")))
+            sim_type = bool(int(input("Choose the type of simulation: 1 - regular, 0 - normal/gaussian")))
+            client.simulate_searches(n_searches, en_cache, sim_type)
         elif choice == "3":
-            print("Goodbye!")
-            break
-        elif choice == "4":
             key = input("Enter key: ")
             value = client.removal(key)
+        elif choice == "9":
+            print("Goodbye!")
+            break
         else:
             print("Invalid choice. Try again.")
