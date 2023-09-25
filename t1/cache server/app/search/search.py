@@ -32,16 +32,18 @@ class CacheClient:
             # Si no está en el caché, buscar en el JSON
             value = find_car_by_id(int(key))
             value = str(value)
-            if value and en_cache:
+            if value:
                 print("Key found in JSON. Adding to cache...")
-                
-                # Agregando la llave-valor al caché
-                self.stub.Put(cache_service_pb2.CacheItem(key=key, value=value))
+
+                if en_cache:
+                    # Agregando la llave-valor al caché
+                    self.stub.Put(cache_service_pb2.CacheItem(key=key, value=value))
                 
                 elapsed_time = time.time() - start_time  # Calcula el tiempo transcurrido
                 if simulated:
                     # add delay to time just sum
                     elapsed_time += delay
+                    time.sleep(delay) # ADDED A DELAY TO REAL TIME 
                 print(f"Time taken (JSON + delay): {elapsed_time:.5f} seconds")
                 
                 return value
@@ -61,11 +63,10 @@ class CacheClient:
             while i<n_searches:
                 hold_id = int(random.normalvariate(50,20))
                 hold_id = max(0, min(99, hold_id))
-                keys_to_search.append(hold_id)
+                keys_to_search.append(f"{hold_id}")
                 i+=1
         # Métricas
-        time_without_cache = 0
-        time_with_cache = 0
+        total_time = 0
         avoided_json_lookups = 0
 
         count = 0
@@ -75,26 +76,34 @@ class CacheClient:
             print("\033[H\033[J")
             print(f"Searching : {count}/{n_searches}")
             start_time = time.time()
-            time_without_cache += 3 + 0.001  # Estimado de tiempo de búsqueda en JSON
+            # time_without_cache += 3 + 0.001  # Estimado de tiempo de búsqueda en JSON
             self.get(key, en_cache)
             elapsed_time = time.time() - start_time
-            time_with_cache += elapsed_time
+            total_time += elapsed_time
 
             if elapsed_time < 1:
                 avoided_json_lookups += 1
 
-        time_saved = time_without_cache - time_with_cache
-        print(f"\nTime saved thanks to cache: {time_saved:.2f} seconds")
+        # time_saved = time_without_cache - time_with_cache
+
+        # print(f"\nTime saved thanks to cache: {time_saved:.2f} seconds")
         print(f"Number of times JSON lookup was avoided: {avoided_json_lookups}")
-    
+        print(f"Total search time: {total_time}")
+
     def removal(self, key):
         value = find_car_by_id(int(key))
         value = str(value)
         if value:
-            print("Key found in JSON. Removing from cache...")
+            # print("Key found in JSON. Removing from cache...")
             self.stub.Remove(cache_service_pb2.CacheItem(key=key, value=value))
-            
 
+    def clear_cache(self):
+        keys = list(range(100))
+        print("clearing cache...")
+        for k in keys:
+            self.removal(f"{k}")
+            print(".")
+        print("Done!")
 if __name__ == '__main__':
 
     client = CacheClient()
@@ -104,6 +113,7 @@ if __name__ == '__main__':
         print("1. Get")
         print("2. Simulate Searches")
         print("3. Remove from cache [Testing only!!!]")
+        print("4. Ensure cache clearance")
         print("9. Exit")
 
         choice = input("Enter your choice: ")
@@ -120,7 +130,9 @@ if __name__ == '__main__':
             client.simulate_searches(n_searches, en_cache, sim_type)
         elif choice == "3":
             key = input("Enter key: ")
-            value = client.removal(key)
+            client.removal(key)
+        elif choice == "4":
+            client.clear_cache()
         elif choice == "9":
             print("Goodbye!")
             break
